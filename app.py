@@ -3,24 +3,57 @@ import time
 import uuid
 from flask import Flask, request, jsonify
 from datetime import datetime
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 
 app = Flask(__name__)
 
-# Simple mock text generation
+# Load tiny language model (DistilGPT-2 - smallest available)
+print("Loading DistilGPT-2 model...")
+model_name = "distilgpt2"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+tokenizer.pad_token = tokenizer.eos_token
+print("Model loaded successfully!")
+
+# Language model text generation
 def generate_mock_response(message):
-    """Simple mock response generator"""
-    responses = [
-        f"I understand your message about: {message[:50]}...",
-        f"That's an interesting point. Let me elaborate on {message[:30]}...",
-        f"Thank you for sharing. Regarding {message[:40]}...",
-        "I appreciate your input. Here's my perspective on that topic.",
-        "That's a great question. Let me provide some insights.",
-    ]
-    return random.choice(responses)
+    """Generate response using DistilGPT-2"""
+    try:
+        # Prepare input
+        prompt = f"User: {message}\nAssistant:"
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=100)
+        
+        # Generate response
+        with torch.no_grad():
+            outputs = model.generate(
+                inputs['input_ids'],
+                max_new_tokens=50,
+                temperature=0.8,
+                do_sample=True,
+                top_p=0.9,
+                pad_token_id=tokenizer.eos_token_id
+            )
+        
+        # Decode and extract assistant response
+        full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Extract just the assistant's response
+        if "Assistant:" in full_response:
+            response = full_response.split("Assistant:")[1].strip()
+            # Take first sentence or up to 100 chars
+            response = response.split('.')[0] + '.' if '.' in response else response[:100]
+        else:
+            response = full_response[len(prompt):].strip()[:100]
+        
+        return response if response else "I understand your message."
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        return "I understand your message."
 
 def count_tokens(text):
-    """Simple token counter - roughly words/0.75"""
-    return max(1, len(text.split()) * 4 // 3)
+    """Count tokens using the actual tokenizer"""
+    return len(tokenizer.encode(text))
 
 # Vendor A endpoints
 @app.route('/vendor-a/conversations', methods=['POST'])
