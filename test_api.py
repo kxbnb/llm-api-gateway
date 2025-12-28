@@ -8,11 +8,12 @@ print('Testing 30 requests to each vendor to verify error rates...\n')
 print('=== VENDOR A ===')
 results_a = {'200': 0, '500': 0}
 slow_count = 0
-
+base_url = 'http://localhost:8080'
+base_url = 'https://sf-mock-vendor.fly.dev'
 for i in range(30):
     try:
         r = requests.post(
-            'http://localhost:8080/vendor-a/conversations/test/messages',
+            f"{base_url}/vendor-a/conversations/test/messages",
             json={'message': 'test'},
             timeout=10
         )
@@ -40,7 +41,7 @@ results_b = {'200': 0, '429': 0}
 for i in range(30):
     try:
         r = requests.post(
-            'http://localhost:8080/vendor-b/conversations/test/messages',
+            f"{base_url}/vendor-b/conversations/test/messages",
             json={'message': 'test'},
             timeout=10
         )
