@@ -34,7 +34,13 @@ pip install -r requirements.txt
 # Run locally
 python app.py
 
-# Test the API
+# Run tests with pytest
+pytest test_api.py -v
+
+# Or set custom BASE_URL
+BASE_URL=http://localhost:8080 pytest test_api.py -v
+
+# Test the API manually
 curl -X POST http://localhost:8080/vendor-a/conversations
 curl -X POST http://localhost:8080/vendor-a/conversations/{id}/messages \
   -H "Content-Type: application/json" \

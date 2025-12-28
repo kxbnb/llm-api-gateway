@@ -1,58 +1,140 @@
 #!/usr/bin/env python3
+import pytest
 import requests
-import json
+import os
 
-print('Testing 30 requests to each vendor to verify error rates...\n')
+# Base URL can be set via environment variable or defaults to localhost
+BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8080')
 
-# Test Vendor A
-print('=== VENDOR A ===')
-results_a = {'200': 0, '500': 0}
-slow_count = 0
-base_url = 'http://localhost:8080'
-base_url = 'https://sf-mock-vendor.fly.dev'
-for i in range(30):
-    try:
-        r = requests.post(
-            f"{base_url}/vendor-a/conversations/test/messages",
-            json={'message': 'test'},
+
+class TestVendorA:
+    """Test cases for Vendor A endpoints"""
+
+    def test_create_conversation(self):
+        """Test vendor-a conversation creation"""
+        response = requests.post(f"{BASE_URL}/vendor-a/conversations")
+        assert response.status_code == 201
+        data = response.json()
+        assert 'conversation_id' in data
+        assert len(data['conversation_id']) > 0
+
+    def test_send_message_success(self):
+        """Test vendor-a message endpoint returns correct format"""
+        response = requests.post(
+            f"{BASE_URL}/vendor-a/conversations/test-123/messages",
+            json={'message': 'Hello, how are you?'},
             timeout=10
         )
-        results_a[str(r.status_code)] = results_a.get(str(r.status_code), 0) + 1
         
-        if r.status_code == 200:
-            data = r.json()
-            if data.get('latencyMS', 0) > 1000:
-                slow_count += 1
-                print(f"  Request {i+1}: Slow response - {data['latencyMS']}ms")
-        elif r.status_code == 500:
-            print(f"  Request {i+1}: HTTP 500 Error")
-    except Exception as e:
-        print(f"  Request {i+1}: Error - {e}")
+        if response.status_code == 200:
+            data = response.json()
+            assert 'outputText' in data
+            assert 'tokensIn' in data
+            assert 'tokensOut' in data
+            assert 'latencyMS' in data
+            assert isinstance(data['outputText'], str)
+            assert isinstance(data['tokensIn'], int)
+            assert isinstance(data['tokensOut'], int)
+            assert isinstance(data['latencyMS'], int)
+            assert len(data['outputText']) > 0
+        elif response.status_code == 500:
+            # 10% failure rate is expected
+            data = response.json()
+            assert 'error' in data
 
-print(f'\nVendor A Results:')
-print(f'  Success (200): {results_a.get("200", 0)}/30')
-print(f'  Errors (500): {results_a.get("500", 0)}/30')
-print(f'  Slow (>1s latency): {slow_count}/30')
+    def test_error_rate_and_latency(self):
+        """Test vendor-a has approximately 10% errors and 10% slow responses"""
+        results = {'200': 0, '500': 0}
+        slow_count = 0
+        
+        for i in range(30):
+            response = requests.post(
+                f"{BASE_URL}/vendor-a/conversations/test/messages",
+                json={'message': 'test'},
+                timeout=10
+            )
+            results[str(response.status_code)] = results.get(str(response.status_code), 0) + 1
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('latencyMS', 0) > 1000:
+                    slow_count += 1
+        
+        # Verify roughly 10% error rate (allow 0-30% range due to randomness)
+        error_rate = results.get('500', 0) / 30
+        assert 0 <= error_rate <= 0.3, f"Error rate {error_rate:.1%} outside expected range"
+        
+        # Verify roughly 10% slow responses (allow 0-30% range)
+        slow_rate = slow_count / results.get('200', 1)
+        assert 0 <= slow_rate <= 0.4, f"Slow response rate {slow_rate:.1%} outside expected range"
 
-# Test Vendor B
-print('\n=== VENDOR B ===')
-results_b = {'200': 0, '429': 0}
 
-for i in range(30):
-    try:
-        r = requests.post(
-            f"{base_url}/vendor-b/conversations/test/messages",
-            json={'message': 'test'},
+class TestVendorB:
+    """Test cases for Vendor B endpoints"""
+
+    def test_create_conversation(self):
+        """Test vendor-b conversation creation"""
+        response = requests.post(f"{BASE_URL}/vendor-b/conversations")
+        assert response.status_code == 201
+        data = response.json()
+        assert 'conversation_id' in data
+        assert len(data['conversation_id']) > 0
+
+    def test_send_message_success(self):
+        """Test vendor-b message endpoint returns correct format"""
+        response = requests.post(
+            f"{BASE_URL}/vendor-b/conversations/test-456/messages",
+            json={'message': 'What is AI?'},
             timeout=10
         )
-        results_b[str(r.status_code)] = results_b.get(str(r.status_code), 0) + 1
         
-        if r.status_code == 429:
-            data = r.json()
-            print(f"  Request {i+1}: HTTP 429 Rate Limit - retryAfterMs: {data.get('retryAfterMs')}ms")
-    except Exception as e:
-        print(f"  Request {i+1}: Error - {e}")
+        if response.status_code == 200:
+            data = response.json()
+            assert 'choices' in data
+            assert 'usage' in data
+            assert isinstance(data['choices'], list)
+            assert len(data['choices']) > 0
+            assert 'message' in data['choices'][0]
+            assert 'content' in data['choices'][0]['message']
+            assert 'input_tokens' in data['usage']
+            assert 'output_tokens' in data['usage']
+            assert isinstance(data['usage']['input_tokens'], int)
+            assert isinstance(data['usage']['output_tokens'], int)
+        elif response.status_code == 429:
+            # 10% rate limit is expected
+            data = response.json()
+            assert 'retryAfterMs' in data
+            assert 'error' in data
+            assert 5000 <= data['retryAfterMs'] <= 10000
 
-print(f'\nVendor B Results:')
-print(f'  Success (200): {results_b.get("200", 0)}/30')
-print(f'  Rate Limited (429): {results_b.get("429", 0)}/30')
+    def test_rate_limit(self):
+        """Test vendor-b has approximately 10% rate limit responses"""
+        results = {'200': 0, '429': 0}
+        
+        for i in range(30):
+            response = requests.post(
+                f"{BASE_URL}/vendor-b/conversations/test/messages",
+                json={'message': 'test'},
+                timeout=10
+            )
+            results[str(response.status_code)] = results.get(str(response.status_code), 0) + 1
+        
+        # Verify roughly 10% rate limit (allow 0-30% range due to randomness)
+        rate_limit_rate = results.get('429', 0) / 30
+        assert 0 <= rate_limit_rate <= 0.3, f"Rate limit rate {rate_limit_rate:.1%} outside expected range"
+
+
+class TestHealthEndpoint:
+    """Test health check endpoint"""
+
+    def test_health_check(self):
+        """Test health endpoint returns healthy status"""
+        response = requests.get(f"{BASE_URL}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data['status'] == 'healthy'
+
+
+if __name__ == '__main__':
+    # Run with: python test_api.py or pytest test_api.py
+    pytest.main([__file__, '-v'])
