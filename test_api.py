@@ -4,7 +4,7 @@ import requests
 import os
 
 # Base URL can be set via environment variable or defaults to localhost
-BASE_URL = os.environ.get('BASE_URL', 'https://sf-mock-vendor.fly.dev')
+BASE_URL = os.environ.get('BASE_URL', 'https://llm-gateway.fly.dev')
 
 
 class TestVendorA:

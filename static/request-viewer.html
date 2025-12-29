@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - LLM Gateway</title>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .right-panel {
+            position: sticky;
+            top: 40px;
+            height: fit-content;
+        }
+        
+        .endpoint-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .method-badge {
+            background: #10b981;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .endpoint-path {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 16px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .endpoint-description {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+        }
+        
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        
+        .param-table th {
+            text-align: left;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .param-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        
+        .param-name {
+            font-family: 'Roboto Mono', monospace;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .param-type {
+            font-family: 'Roboto Mono', monospace;
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .response-example {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-bottom: 25px;
+        }
+        
+        .try-button {
+            width: 100%;
+            padding: 14px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .try-button:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .try-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .try-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .try-panel h2 {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            font-family: 'Roboto Mono', monospace;
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .result-section.visible {
+            display: block;
+        }
+        
+        .result-tabs {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 0;
+            background: #f0f0f0;
+            border-radius: 8px 8px 0 0;
+            padding: 4px;
+        }
+        
+        .result-tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+        
+        .result-tab.active {
+            background: white;
+            color: #667eea;
+        }
+        
+        .result-content {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 0 0 8px 8px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow: auto;
+        }
+        
+        .result-tab-content {
+            display: none;
+        }
+        
+        .result-tab-content.active {
+            display: block;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .status-badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .json-key {
+            color: #9cdcfe;
+        }
+        
+        .json-string {
+            color: #ce9178;
+        }
+        
+        .json-number {
+            color: #b5cea8;
+        }
+        
+        .json-boolean {
+            color: #569cd6;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.3s;
+            margin-top: 15px;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>LLM Gateway API Documentation</h1>
+            <p>Interactive API documentation with live testing capabilities</p>
+            <a href="/" class="nav-link">
+                <span class="material-icons">chat</span>
+                Go to Chat Interface
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="left-panel">
+            <!-- Vendor A Documentation -->
+            <div class="endpoint-section" id="vendor-a-docs">
+                <div class="endpoint-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint-path">/vendor-a/messages</span>
+                </div>
+                
+                <p class="endpoint-description">
+                    Vendor A endpoint using TinyLlama model. Returns response with detailed token usage and latency metrics. 
+                    Has 10% error rate (500) and 10% slow response rate.
+                </p>
+                
+                <div class="section-title">Request Body</div>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="param-name">prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>The message to send to the model</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">system_prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Optional system instruction for the model</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="section-title">Response</div>
+                <pre class="response-example">{
+  "outputText": "Model generated response",
+  "tokensIn": 15,
+  "tokensOut": 25,
+  "latencyMS": 1234
+}</pre>
+                
+                <button class="try-button" onclick="selectEndpoint('vendor-a')">
+                    <span class="material-icons">play_arrow</span>
+                    Try Vendor A
+                </button>
+            </div>
+
+            <!-- Vendor B Documentation -->
+            <div class="endpoint-section" id="vendor-b-docs">
+                <div class="endpoint-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint-path">/vendor-b/messages</span>
+                </div>
+                
+                <p class="endpoint-description">
+                    Vendor B endpoint using DistilGPT-2 model. Returns OpenAI-style response format with choices array. 
+                    Has 10% rate limit error (429).
+                </p>
+                
+                <div class="section-title">Request Body</div>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="param-name">prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>The message to send to the model</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">system_prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Optional system instruction for the model</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="section-title">Response</div>
+                <pre class="response-example">{
+  "choices": [{
+    "message": {
+      "content": "Model generated response"
+    }
+  }],
+  "usage": {
+    "input_tokens": 15,
+    "output_tokens": 25
+  }
+}</pre>
+                
+                <button class="try-button" onclick="selectEndpoint('vendor-b')">
+                    <span class="material-icons">play_arrow</span>
+                    Try Vendor B
+                </button>
+            </div>
+
+            <!-- Vendor E Documentation -->
+            <div class="endpoint-section" id="vendor-e-docs">
+                <div class="endpoint-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint-path">/vendor-e/messages</span>
+                </div>
+                
+                <p class="endpoint-description">
+                    Vendor E is an echo endpoint that simply returns your input. Useful for testing and validation.
+                </p>
+                
+                <div class="section-title">Request Body</div>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="param-name">prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>The message to echo back</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="section-title">Response</div>
+                <pre class="response-example">{
+  "response": "You entered {your prompt}"
+}</pre>
+                
+                <button class="try-button" onclick="selectEndpoint('vendor-e')">
+                    <span class="material-icons">play_arrow</span>
+                    Try Vendor E
+                </button>
+            </div>
+
+            <!-- Vendor O Documentation -->
+            <div class="endpoint-section" id="vendor-o-docs">
+                <div class="endpoint-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint-path">/vendor-o/messages</span>
+                </div>
+                
+                <p class="endpoint-description">
+                    Vendor O is a passthrough to OpenAI's API. Returns standard OpenAI response format. 
+                    Requires OPENAI_API_KEY environment variable to be set.
+                </p>
+                
+                <div class="section-title">Request Body</div>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="param-name">prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>The message to send to OpenAI</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">system_prompt</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Optional system instruction (default: "You are a helpful assistant")</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">model</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>OpenAI model to use (default: "gpt-3.5-turbo")</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="section-title">Response</div>
+                <pre class="response-example">{
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "created": 1234567890,
+  "model": "gpt-3.5-turbo",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "Response from OpenAI"
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 15,
+    "completion_tokens": 25,
+    "total_tokens": 40
+  }
+}</pre>
+                
+                <button class="try-button" onclick="selectEndpoint('vendor-o')">
+                    <span class="material-icons">play_arrow</span>
+                    Try Vendor O
+                </button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="try-panel">
+                <h2>Try It Out</h2>
+                
+                <div class="form-group">
+                    <label>Endpoint</label>
+                    <select id="endpoint-select" onchange="updateEndpointPath()">
+                        <option value="">Select an endpoint</option>
+                        <option value="vendor-a">/vendor-a/messages</option>
+                        <option value="vendor-b">/vendor-b/messages</option>
+                        <option value="vendor-e">/vendor-e/messages</option>
+                        <option value="vendor-o">/vendor-o/messages (OpenAI)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Prompt</label>
+                    <textarea id="prompt-input" placeholder="Enter your message here...">What is the meaning of life?</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>System Prompt (Optional)</label>
+                    <input type="text" id="system-prompt-input" placeholder="You are a helpful assistant">
+                </div>
+
+                <button class="try-button" id="execute-button" onclick="executeRequest()" disabled>
+                    <span class="material-icons">send</span>
+                    Send Request
+                </button>
+
+                <div class="result-section" id="result-section">
+                    <div class="result-tabs">
+                        <button class="result-tab active" onclick="switchTab('response')">Response</button>
+                        <button class="result-tab" onclick="switchTab('headers')">Headers</button>
+                        <button class="result-tab" onclick="switchTab('request')">Request</button>
+                    </div>
+                    
+                    <div class="result-content">
+                        <div class="result-tab-content active" id="response-content"></div>
+                        <div class="result-tab-content" id="headers-content"></div>
+                        <div class="result-tab-content" id="request-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEndpoint = '';
+        let lastRequest = {};
+        let lastResponse = {};
+
+        function selectEndpoint(vendor) {
+            document.getElementById('endpoint-select').value = vendor;
+            updateEndpointPath();
+            document.getElementById('prompt-input').focus();
+        }
+
+        function updateEndpointPath() {
+            const select = document.getElementById('endpoint-select');
+            currentEndpoint = select.value;
+            document.getElementById('execute-button').disabled = !currentEndpoint;
+        }
+
+        async function executeRequest() {
+            const button = document.getElementById('execute-button');
+            const prompt = document.getElementById('prompt-input').value.trim();
+            const systemPrompt = document.getElementById('system-prompt-input').value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            // Build request body
+            const requestBody = { prompt };
+            if (systemPrompt) {
+                requestBody.system_prompt = systemPrompt;
+            }
+
+            // Store request details
+            lastRequest = {
+                method: 'POST',
+                url: `/${currentEndpoint}/messages`,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: requestBody
+            };
+
+            // Update request tab
+            document.getElementById('request-content').innerHTML = syntaxHighlight(JSON.stringify(lastRequest, null, 2));
+
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '<div class="loading-spinner"></div> Sending...';
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(`/${currentEndpoint}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const duration = Date.now() - startTime;
+                const responseData = await response.json();
+
+                // Store response details
+                lastResponse = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    duration: duration,
+                    data: responseData
+                };
+
+                // Update headers tab
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                headers['duration'] = `${duration}ms`;
+                document.getElementById('headers-content').innerHTML = syntaxHighlight(JSON.stringify(headers, null, 2));
+
+                // Update response tab with status
+                const statusClass = response.ok ? 'success' : 'error';
+                const statusIcon = response.ok ? 'check_circle' : 'error';
+                
+                const responseHtml = `<div class="status-badge ${statusClass}">
+                    <span class="material-icons" style="font-size: 16px">${statusIcon}</span>
+                    ${response.status} ${response.statusText} (${duration}ms)
+                </div>
+${syntaxHighlight(JSON.stringify(responseData, null, 2))}`;
+                
+                document.getElementById('response-content').innerHTML = responseHtml;
+
+                // Show result section
+                document.getElementById('result-section').classList.add('visible');
+
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                
+                document.getElementById('response-content').innerHTML = `<div class="status-badge error">
+                    <span class="material-icons" style="font-size: 16px">error</span>
+                    Error (${duration}ms)
+                </div>
+<span style="color: #ef4444">${error.message}</span>`;
+                
+                document.getElementById('result-section').classList.add('visible');
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = '<span class="material-icons">send</span> Send Request';
+            }
+        }
+
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.result-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.result-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tab}-content`).classList.add('active');
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Enable button if endpoint is already selected on load
+        updateEndpointPath();
+    </script>
+</body>
+</html>

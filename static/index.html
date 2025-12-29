@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mock Vendor Chat</title>
+    <title>LLM Gateway Chat</title>
     
     <!-- Material UI CSS -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
@@ -48,6 +48,22 @@
             font-size: 24px;
             color: #333;
             margin-bottom: 15px;
+        }
+        
+        .api-docs-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            transition: color 0.3s;
+        }
+        
+        .api-docs-link:hover {
+            color: #5568d3;
         }
         
         .vendor-selector {
@@ -142,6 +158,52 @@
             font-size: 11px;
             margin-top: 4px;
             opacity: 0.7;
+        }
+        
+        .raw-response-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            margin-top: 8px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        
+        .raw-response-toggle:hover {
+            opacity: 1;
+        }
+        
+        .raw-response-toggle .material-icons {
+            font-size: 14px;
+            transition: transform 0.3s;
+        }
+        
+        .raw-response-toggle.expanded .material-icons {
+            transform: rotate(180deg);
+        }
+        
+        .raw-response-content {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .raw-response-content.visible {
+            display: block;
+        }
+        
+        .message.assistant .raw-response-content {
+            background: rgba(0, 0, 0, 0.03);
         }
         
         .input-container {
@@ -241,7 +303,11 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Mock Vendor Chat</h1>
+            <h1>LLM Gateway Chat</h1>
+            <a href="/request-viewer" class="api-docs-link">
+                <span class="material-icons" style="font-size: 18px">description</span>
+                API Documentation
+            </a>
             <div class="vendor-selector">
                 <label for="vendor-select">Select Vendor:</label>
                 <select id="vendor-select">
@@ -249,6 +315,7 @@
                     <option value="vendor-a">Vendor A</option>
                     <option value="vendor-b">Vendor B</option>
                     <option value="vendor-e">Vendor E</option>
+                    <option value="vendor-o">Vendor O (OpenAI)</option>
                 </select>
             </div>
         </div>
@@ -343,11 +410,13 @@
                     })
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
                 const data = await response.json();
+                
+                if (!response.ok) {
+                    // Handle error with full response details
+                    addErrorMessage(`HTTP ${response.status}: ${response.statusText}`, data);
+                    return;
+                }
                 
                 // Extract response based on vendor format
                 let assistantMessage, metadata;
@@ -360,12 +429,16 @@
                 } else if (selectedVendor === 'vendor-e') {
                     assistantMessage = data.response;
                     metadata = '';
+                } else if (selectedVendor === 'vendor-o') {
+                    assistantMessage = data.choices[0].message.content;
+                    metadata = `Model: ${data.model} | Tokens: ${data.usage.prompt_tokens}→${data.usage.completion_tokens}`;
                 }
                 
-                addMessage('assistant', assistantMessage, metadata);
+                addMessage('assistant', assistantMessage, metadata, data);
                 
             } catch (error) {
-                addErrorMessage(`Error: ${error.message}`);
+                // Catch network errors or JSON parse errors
+                addErrorMessage(`Error: ${error.message}`, null);
             } finally {
                 isLoading = false;
                 updateLoadingState();
@@ -373,7 +446,7 @@
             }
         }
         
-        function addMessage(type, content, metadata = '') {
+        function addMessage(type, content, metadata = '', rawData = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             
@@ -388,15 +461,55 @@
                 contentDiv.appendChild(metaDiv);
             }
             
+            // Add raw response toggle for assistant messages
+            if (type === 'assistant' && rawData) {
+                const toggleDiv = document.createElement('div');
+                toggleDiv.className = 'raw-response-toggle';
+                toggleDiv.innerHTML = '<span class="material-icons">expand_more</span><span>View raw response</span>';
+                
+                const rawDiv = document.createElement('div');
+                rawDiv.className = 'raw-response-content';
+                rawDiv.textContent = JSON.stringify(rawData, null, 2);
+                
+                toggleDiv.addEventListener('click', () => {
+                    toggleDiv.classList.toggle('expanded');
+                    rawDiv.classList.toggle('visible');
+                });
+                
+                contentDiv.appendChild(toggleDiv);
+                contentDiv.appendChild(rawDiv);
+            }
+            
             messageDiv.appendChild(contentDiv);
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
-        function addErrorMessage(message) {
+        function addErrorMessage(message, rawData = null) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
+            
+            // Add raw response toggle if we have error data
+            if (rawData) {
+                const toggleDiv = document.createElement('div');
+                toggleDiv.className = 'raw-response-toggle';
+                toggleDiv.style.color = '#c62828';
+                toggleDiv.innerHTML = '<span class="material-icons">expand_more</span><span>View raw response</span>';
+                
+                const rawDiv = document.createElement('div');
+                rawDiv.className = 'raw-response-content';
+                rawDiv.textContent = JSON.stringify(rawData, null, 2);
+                
+                toggleDiv.addEventListener('click', () => {
+                    toggleDiv.classList.toggle('expanded');
+                    rawDiv.classList.toggle('visible');
+                });
+                
+                errorDiv.appendChild(toggleDiv);
+                errorDiv.appendChild(rawDiv);
+            }
+            
             messagesDiv.appendChild(errorDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
