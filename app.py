@@ -59,15 +59,8 @@ def count_tokens(text):
     return len(tokenizer.encode(text))
 
 # Vendor A endpoints
-@app.route('/vendor-a/conversations', methods=['POST'])
-def vendor_a_create_conversation():
-    conversation_id = str(uuid.uuid4())
-    return jsonify({
-        'conversation_id': conversation_id
-    }), 201
-
-@app.route('/vendor-a/conversations/<conversation_id>/messages', methods=['POST'])
-def vendor_a_send_message(conversation_id):
+@app.route('/vendor-a/messages', methods=['POST'])
+def vendor_a_send_message():
     start_time = time.time()
     
     # 10% chance of failure
@@ -102,15 +95,8 @@ def vendor_a_send_message(conversation_id):
     }), 200
 
 # Vendor B endpoints
-@app.route('/vendor-b/conversations', methods=['POST'])
-def vendor_b_create_conversation():
-    conversation_id = str(uuid.uuid4())
-    return jsonify({
-        'conversation_id': conversation_id
-    }), 201
-
-@app.route('/vendor-b/conversations/<conversation_id>/messages', methods=['POST'])
-def vendor_b_send_message(conversation_id):
+@app.route('/vendor-b/messages', methods=['POST'])
+def vendor_b_send_message():
     # 10% chance of rate limit
     if random.random() < 0.1:
         retry_after_ms = random.randint(5000, 10000)

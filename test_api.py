@@ -10,18 +10,10 @@ BASE_URL = os.environ.get('BASE_URL', 'https://sf-mock-vendor.fly.dev')
 class TestVendorA:
     """Test cases for Vendor A endpoints"""
 
-    def test_create_conversation(self):
-        """Test vendor-a conversation creation"""
-        response = requests.post(f"{BASE_URL}/vendor-a/conversations")
-        assert response.status_code == 201
-        data = response.json()
-        assert 'conversation_id' in data
-        assert len(data['conversation_id']) > 0
-
     def test_send_message_success(self):
         """Test vendor-a message endpoint returns correct format"""
         response = requests.post(
-            f"{BASE_URL}/vendor-a/conversations/test-123/messages",
+            f"{BASE_URL}/vendor-a/messages",
             json={'prompt': 'Hello, how are you?', 'system_prompt': 'You are a helpful assistant'},
             timeout=10
         )
@@ -49,7 +41,7 @@ class TestVendorA:
         
         for i in range(30):
             response = requests.post(
-                f"{BASE_URL}/vendor-a/conversations/test/messages",
+                f"{BASE_URL}/vendor-a/messages",
                 json={'prompt': 'test'},
                 timeout=10
             )
@@ -65,25 +57,19 @@ class TestVendorA:
         assert 0 <= error_rate <= 0.3, f"Error rate {error_rate:.1%} outside expected range"
         
         # Verify roughly 10% slow responses (allow 0-30% range)
-        slow_rate = slow_count / results.get('200', 1)
-        assert 0 <= slow_rate <= 0.4, f"Slow response rate {slow_rate:.1%} outside expected range"
+        success_count = results.get('200', 0)
+        if success_count > 0:
+            slow_rate = slow_count / success_count
+            assert 0 <= slow_rate <= 0.4, f"Slow response rate {slow_rate:.1%} outside expected range"
 
 
 class TestVendorB:
     """Test cases for Vendor B endpoints"""
 
-    def test_create_conversation(self):
-        """Test vendor-b conversation creation"""
-        response = requests.post(f"{BASE_URL}/vendor-b/conversations")
-        assert response.status_code == 201
-        data = response.json()
-        assert 'conversation_id' in data
-        assert len(data['conversation_id']) > 0
-
     def test_send_message_success(self):
         """Test vendor-b message endpoint returns correct format"""
         response = requests.post(
-            f"{BASE_URL}/vendor-b/conversations/test-456/messages",
+            f"{BASE_URL}/vendor-b/messages",
             json={'prompt': 'What is AI?', 'system_prompt': 'You are a helpful assistant'},
             timeout=10
         )
@@ -113,7 +99,7 @@ class TestVendorB:
         
         for i in range(30):
             response = requests.post(
-                f"{BASE_URL}/vendor-b/conversations/test/messages",
+                f"{BASE_URL}/vendor-b/messages",
                 json={'prompt': 'test'},
                 timeout=10
             )
