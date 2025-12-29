@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Vendor Chat</title>
+    
+    <!-- Material UI CSS -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f5f5f5;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .vendor-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .vendor-selector label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            background: white;
+            cursor: pointer;
+            outline: none;
+            min-width: 200px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            border-color: #667eea;
+        }
+        
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .chat-container.active {
+            display: flex;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-meta {
+            font-size: 11px;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+        
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            background: white;
+            border-radius: 0 0 12px 12px;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        
+        textarea {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s;
+            min-height: 50px;
+            max-height: 100px;
+        }
+        
+        textarea:focus {
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            gap: 10px;
+        }
+        
+        .empty-state .material-icons {
+            font-size: 64px;
+            opacity: 0.3;
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mock Vendor Chat</h1>
+            <div class="vendor-selector">
+                <label for="vendor-select">Select Vendor:</label>
+                <select id="vendor-select">
+                    <option value="">-- Choose a vendor --</option>
+                    <option value="vendor-a">Vendor A</option>
+                    <option value="vendor-b">Vendor B</option>
+                    <option value="vendor-e">Vendor E</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="messages" id="messages">
+                <div class="empty-state">
+                    <span class="material-icons">chat_bubble_outline</span>
+                    <p>Start a conversation</p>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="message-input" 
+                        placeholder="Type your message..."
+                        rows="2"
+                    ></textarea>
+                    <button id="send-button">
+                        <span class="material-icons">send</span>
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const vendorSelect = document.getElementById('vendor-select');
+        const chatContainer = document.getElementById('chat-container');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        
+        let selectedVendor = '';
+        let isLoading = false;
+        
+        // Handle vendor selection
+        vendorSelect.addEventListener('change', (e) => {
+            selectedVendor = e.target.value;
+            if (selectedVendor) {
+                chatContainer.classList.add('active');
+                messagesDiv.innerHTML = '<div class="empty-state"><span class="material-icons">chat_bubble_outline</span><p>Start a conversation</p></div>';
+                messageInput.focus();
+            } else {
+                chatContainer.classList.remove('active');
+            }
+        });
+        
+        // Handle send button click
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Handle Enter key (Shift+Enter for new line)
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isLoading) return;
+            
+            // Clear input
+            messageInput.value = '';
+            
+            // Remove empty state if present
+            const emptyState = messagesDiv.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            // Add user message
+            addMessage('user', message);
+            
+            // Disable input while loading
+            isLoading = true;
+            updateLoadingState();
+            
+            try {
+                // Make API call
+                const response = await fetch(`/${selectedVendor}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: message,
+                        system_prompt: 'You are a helpful assistant'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Extract response based on vendor format
+                let assistantMessage, metadata;
+                if (selectedVendor === 'vendor-a') {
+                    assistantMessage = data.outputText;
+                    metadata = `Tokens: ${data.tokensIn}→${data.tokensOut} | Latency: ${data.latencyMS}ms`;
+                } else if (selectedVendor === 'vendor-b') {
+                    assistantMessage = data.choices[0].message.content;
+                    metadata = `Tokens: ${data.usage.input_tokens}→${data.usage.output_tokens}`;
+                } else if (selectedVendor === 'vendor-e') {
+                    assistantMessage = data.response;
+                    metadata = '';
+                }
+                
+                addMessage('assistant', assistantMessage, metadata);
+                
+            } catch (error) {
+                addErrorMessage(`Error: ${error.message}`);
+            } finally {
+                isLoading = false;
+                updateLoadingState();
+                messageInput.focus();
+            }
+        }
+        
+        function addMessage(type, content, metadata = '') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            if (metadata) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'message-meta';
+                metaDiv.textContent = metadata;
+                contentDiv.appendChild(metaDiv);
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            messagesDiv.appendChild(errorDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function updateLoadingState() {
+            if (isLoading) {
+                sendButton.disabled = true;
+                messageInput.disabled = true;
+                sendButton.innerHTML = '<div class="loading"></div> Sending...';
+            } else {
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                sendButton.innerHTML = '<span class="material-icons">send</span> Send';
+            }
+        }
+    </script>
+</body>
+</html>

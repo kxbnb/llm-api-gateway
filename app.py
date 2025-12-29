@@ -1,12 +1,12 @@
 import random
 import time
 import uuid
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 # Load tiny language model (DistilGPT-2 - smallest available)
 print("Loading DistilGPT-2 model...")
@@ -128,10 +128,28 @@ def vendor_b_send_message():
         }
     }), 200
 
+# Vendor E endpoints
+@app.route('/vendor-e/messages', methods=['POST'])
+def vendor_e_send_message():
+    data = request.get_json()
+    prompt = data.get('prompt', data.get('message', 'Hello'))
+    
+    # Simply echo back with prefix
+    echo_response = f"You entered {prompt}"
+    
+    return jsonify({
+        'response': echo_response
+    }), 200
+
 # Health check endpoint for fly.io
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'}), 200
+
+# Serve frontend
+@app.route('/')
+def index():
+    return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

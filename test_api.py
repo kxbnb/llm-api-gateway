@@ -110,6 +110,44 @@ class TestVendorB:
         assert 0 <= rate_limit_rate <= 0.3, f"Rate limit rate {rate_limit_rate:.1%} outside expected range"
 
 
+class TestVendorE:
+    """Test cases for Vendor E endpoints"""
+
+    def test_send_message_echo(self):
+        """Test vendor-e message endpoint echoes input correctly"""
+        test_message = "Hello from test"
+        response = requests.post(
+            f"{BASE_URL}/vendor-e/messages",
+            json={'prompt': test_message},
+            timeout=10
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert 'response' in data
+        assert data['response'] == f"You entered {test_message}"
+    
+    def test_echo_with_different_inputs(self):
+        """Test vendor-e echoes various inputs correctly"""
+        test_cases = [
+            "Simple text",
+            "Text with numbers 123",
+            "Special chars !@#$%",
+            "Multi word sentence with spaces"
+        ]
+        
+        for test_input in test_cases:
+            response = requests.post(
+                f"{BASE_URL}/vendor-e/messages",
+                json={'prompt': test_input},
+                timeout=10
+            )
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data['response'] == f"You entered {test_input}"
+
+
 class TestHealthEndpoint:
     """Test health check endpoint"""
 
