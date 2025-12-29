@@ -386,8 +386,8 @@
                 </div>
                 
                 <p class="endpoint-description">
-                    Vendor A endpoint using TinyLlama model. Returns response with detailed token usage and latency metrics. 
-                    Has 10% error rate (500) and 10% slow response rate.
+                    Vendor A endpoint with canned responses. Returns response with detailed token usage and latency metrics. 
+                    Has 10% error rate (500) and 10% slow response rate. Supports optional invoice lookup tool.
                 </p>
                 
                 <div class="section-title">Request Body</div>
@@ -627,7 +627,7 @@
                 <div class="form-group" id="tools-group" style="display: none;">
                     <label>Tools (Optional - JSON array)</label>
                     <textarea id="tools-input" placeholder="Enter tools JSON array..."></textarea>
-                    <button type="button" onclick="loadWeatherTool()" style="margin-top: 8px; padding: 8px 12px; background: #f3f4f6; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 13px;">Load Weather Tool Example</button>
+                    <button type="button" onclick="loadWeatherTool()" style="margin-top: 8px; padding: 8px 12px; background: #f3f4f6; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 13px;" id="load-tool-btn">Load Tool Example</button>
                 </div>
 
                 <div class="form-group" id="tool-choice-group" style="display: none;">
@@ -673,12 +673,15 @@
             currentEndpoint = select.value;
             document.getElementById('execute-button').disabled = !currentEndpoint;
             
-            // Show tools fields only for vendor-o
+            // Show tools fields for vendor-a and vendor-o
             const toolsGroup = document.getElementById('tools-group');
             const toolChoiceGroup = document.getElementById('tool-choice-group');
             if (currentEndpoint === 'vendor-o') {
                 toolsGroup.style.display = 'block';
                 toolChoiceGroup.style.display = 'block';
+            } else if (currentEndpoint === 'vendor-a') {
+                toolsGroup.style.display = 'block';
+                toolChoiceGroup.style.display = 'none';
             } else {
                 toolsGroup.style.display = 'none';
                 toolChoiceGroup.style.display = 'none';
@@ -686,31 +689,56 @@
         }
 
         function loadWeatherTool() {
-            const weatherTool = [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_current_weather",
-                        "description": "Get the current weather in a given location",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "location": {
-                                    "type": "string",
-                                    "description": "The city and state, e.g. San Francisco, CA"
+            if (currentEndpoint === 'vendor-a') {
+                // Load invoice tool for vendor-a
+                const invoiceTool = [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "get_invoice",
+                            "description": "Get invoice details by invoice ID",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "invoice_id": {
+                                        "type": "string",
+                                        "description": "The invoice ID, e.g. INV-12345"
+                                    }
                                 },
-                                "unit": {
-                                    "type": "string",
-                                    "enum": ["celsius", "fahrenheit"],
-                                    "description": "The temperature unit to use"
-                                }
-                            },
-                            "required": ["location"]
+                                "required": ["invoice_id"]
+                            }
                         }
                     }
-                }
-            ];
-            document.getElementById('tools-input').value = JSON.stringify(weatherTool, null, 2);
+                ];
+                document.getElementById('tools-input').value = JSON.stringify(invoiceTool, null, 2);
+            } else {
+                // Load weather tool for vendor-o
+                const weatherTool = [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "get_current_weather",
+                            "description": "Get the current weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "location": {
+                                        "type": "string",
+                                        "description": "The city and state, e.g. San Francisco, CA"
+                                    },
+                                    "unit": {
+                                        "type": "string",
+                                        "enum": ["celsius", "fahrenheit"],
+                                        "description": "The temperature unit to use"
+                                    }
+                                },
+                                "required": ["location"]
+                            }
+                        }
+                    }
+                ];
+                document.getElementById('tools-input').value = JSON.stringify(weatherTool, null, 2);
+            }
         }
 
         async function executeRequest() {
@@ -729,10 +757,9 @@
                 requestBody.system_prompt = systemPrompt;
             }
 
-            // Add tools and tool_choice for vendor-o
-            if (currentEndpoint === 'vendor-o') {
+            // Add tools and tool_choice for vendor-o and vendor-a
+            if (currentEndpoint === 'vendor-o' || currentEndpoint === 'vendor-a') {
                 const toolsInput = document.getElementById('tools-input').value.trim();
-                const toolChoiceInput = document.getElementById('tool-choice-input').value.trim();
                 
                 if (toolsInput) {
                     try {
@@ -743,8 +770,12 @@
                     }
                 }
                 
-                if (toolChoiceInput) {
-                    requestBody.tool_choice = toolChoiceInput;
+                // Only add tool_choice for vendor-o
+                if (currentEndpoint === 'vendor-o') {
+                    const toolChoiceInput = document.getElementById('tool-choice-input').value.trim();
+                    if (toolChoiceInput) {
+                        requestBody.tool_choice = toolChoiceInput;
+                    }
                 }
             }
 

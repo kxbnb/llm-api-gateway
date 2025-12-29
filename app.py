@@ -4,8 +4,6 @@ import uuid
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
 import requests as http_requests
 from dotenv import load_dotenv
 
@@ -14,55 +12,101 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='static')
 
-# Load DistilGPT-2 for both Vendor A and Vendor B
-print("Loading DistilGPT-2 model...")
-distilgpt2_name = "distilgpt2"
-distilgpt2_tokenizer = AutoTokenizer.from_pretrained(distilgpt2_name)
-distilgpt2_model = AutoModelForCausalLM.from_pretrained(distilgpt2_name)
-distilgpt2_tokenizer.pad_token = distilgpt2_tokenizer.eos_token
-print("DistilGPT-2 loaded successfully!")
+# Simple token counter for canned responses
+def count_tokens(text):
+    """Simple word-based token approximation"""
+    return len(text.split())
 
-# Language model text generation
-def generate_response_distilgpt2(prompt, system_prompt=None):
-    """Generate response using DistilGPT-2"""
-    try:
-        # Prepare input
-        if system_prompt:
-            full_prompt = f"System: {system_prompt}\nUser: {prompt}\nAssistant:"
-        else:
-            full_prompt = f"User: {prompt}\nAssistant:"
-        
-        inputs = distilgpt2_tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=100)
-        
-        # Generate response
-        with torch.no_grad():
-            outputs = distilgpt2_model.generate(
-                inputs['input_ids'],
-                max_new_tokens=50,
-                temperature=0.8,
-                do_sample=True,
-                top_p=0.9,
-                pad_token_id=distilgpt2_tokenizer.eos_token_id
-            )
-        
-        # Decode response
-        full_response = distilgpt2_tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract assistant's response
-        if "Assistant:" in full_response:
-            response = full_response.split("Assistant:")[1].strip()
-            response = response.split('.')[0] + '.' if '.' in response else response[:100]
-        else:
-            response = full_response[len(full_prompt):].strip()[:100]
-        
-        return response if response else "I understand your message."
-    except Exception as e:
-        print(f"Error generating response with DistilGPT-2: {e}")
-        return "I understand your message."
+def generate_canned_response(prompt, system_prompt=None):
+    """Generate a canned response based on prompt keywords"""
+    prompt_lower = prompt.lower()
+    
+    # Simple keyword-based responses
+    if any(word in prompt_lower for word in ['hello', 'hi', 'hey']):
+        return "Hello! How can I assist you today?"
+    elif any(word in prompt_lower for word in ['weather', 'temperature']):
+        return "I can help with weather information. Please specify a location."
+    elif any(word in prompt_lower for word in ['meaning of life', 'life']):
+        return "The meaning of life is a philosophical question that has been pondered throughout history."
+    elif any(word in prompt_lower for word in ['help', 'assist']):
+        return "I'm here to help! Please let me know what you need assistance with."
+    elif any(word in prompt_lower for word in ['thank', 'thanks']):
+        return "You're welcome! Feel free to ask if you need anything else."
+    else:
+        return "I understand your message. This is a simulated response for testing purposes."
 
-def count_tokens(text, vendor='a'):
-    """Count tokens using the tokenizer"""
-    return len(distilgpt2_tokenizer.encode(text))
+def extract_invoice_id(prompt):
+    """Extract invoice ID from prompt (looks for patterns like INV-123, invoice 123, #123)"""
+    import re
+    # Look for patterns like INV-123, invoice 123, #123, invoice #123
+    patterns = [
+        r'INV-\d+',
+        r'invoice[\s#]+\d+',
+        r'#\d+'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, prompt, re.IGNORECASE)
+        if match:
+            # Extract just the number part
+            number_match = re.search(r'\d+', match.group())
+            if number_match:
+                return f"INV-{number_match.group()}"
+    return None
+
+def get_invoice_data(invoice_id):
+    """Return dummy invoice data"""
+    import json
+    # Parse invoice number from ID
+    invoice_num = invoice_id.split('-')[1] if '-' in invoice_id else invoice_id
+    
+    # Generate deterministic dummy data based on invoice number
+    seed = int(invoice_num) if invoice_num.isdigit() else 12345
+    
+    dummy_invoices = [
+        {
+            "invoice_id": invoice_id,
+            "customer_name": "Acme Corporation",
+            "amount": 1250.00 + (seed % 1000),
+            "currency": "USD",
+            "status": "paid",
+            "issue_date": "2025-12-01",
+            "due_date": "2025-12-31",
+            "items": [
+                {"description": "Consulting Services", "quantity": 10, "unit_price": 100.00},
+                {"description": "Software License", "quantity": 1, "unit_price": 250.00}
+            ]
+        },
+        {
+            "invoice_id": invoice_id,
+            "customer_name": "Tech Solutions Inc",
+            "amount": 3500.00 + (seed % 500),
+            "currency": "USD",
+            "status": "pending",
+            "issue_date": "2025-12-15",
+            "due_date": "2026-01-15",
+            "items": [
+                {"description": "Development Work", "quantity": 40, "unit_price": 85.00}
+            ]
+        },
+        {
+            "invoice_id": invoice_id,
+            "customer_name": "Global Enterprises",
+            "amount": 5200.00 + (seed % 2000),
+            "currency": "USD",
+            "status": "overdue",
+            "issue_date": "2025-11-01",
+            "due_date": "2025-12-01",
+            "items": [
+                {"description": "Project Management", "quantity": 20, "unit_price": 150.00},
+                {"description": "Infrastructure Setup", "quantity": 1, "unit_price": 2200.00}
+            ]
+        }
+    ]
+    
+    # Select invoice based on seed
+    invoice = dummy_invoices[seed % len(dummy_invoices)]
+    return json.dumps(invoice)
 
 # Vendor A endpoints
 @app.route('/vendor-a/messages', methods=['POST'])
@@ -82,13 +126,47 @@ def vendor_a_send_message():
     data = request.get_json()
     prompt = data.get('prompt', data.get('message', 'Hello'))
     system_prompt = data.get('system_prompt')
+    tools = data.get('tools')  # Optional tools parameter
     
-    # Generate response using DistilGPT-2
-    output_text = generate_response_distilgpt2(prompt, system_prompt)
+    # Check if tools are provided and prompt mentions an invoice
+    if tools:
+        invoice_id = extract_invoice_id(prompt)
+        if invoice_id:
+            # Simulate tool call response
+            tool_call_id = f"call_{uuid.uuid4().hex[:8]}"
+            invoice_data = get_invoice_data(invoice_id)
+            
+            # Generate natural language response incorporating invoice data
+            import json
+            invoice_info = json.loads(invoice_data)
+            output_text = f"I found invoice {invoice_id} for {invoice_info['customer_name']}. The total amount is ${invoice_info['amount']:.2f} {invoice_info['currency']} and the status is '{invoice_info['status']}'. It was issued on {invoice_info['issue_date']} with a due date of {invoice_info['due_date']}."
+            
+            tokens_in = count_tokens(prompt)
+            tokens_out = count_tokens(output_text)
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            return jsonify({
+                'outputText': output_text,
+                'tokensIn': tokens_in,
+                'tokensOut': tokens_out,
+                'latencyMS': latency_ms,
+                'tool_calls': [{
+                    'id': tool_call_id,
+                    'type': 'function',
+                    'function': {
+                        'name': 'get_invoice',
+                        'arguments': json.dumps({'invoice_id': invoice_id})
+                    }
+                }],
+                'invoice_data': invoice_info
+            }), 200
+    
+    # Generate canned response
+    output_text = generate_canned_response(prompt, system_prompt)
     
     # Calculate tokens
-    tokens_in = count_tokens(prompt, 'a')
-    tokens_out = count_tokens(output_text, 'a')
+    tokens_in = count_tokens(prompt)
+    tokens_out = count_tokens(output_text)
     
     # Calculate latency
     latency_ms = int((time.time() - start_time) * 1000)
@@ -115,12 +193,12 @@ def vendor_b_send_message():
     prompt = data.get('prompt', data.get('message', 'Hello'))
     system_prompt = data.get('system_prompt')
     
-    # Generate response using DistilGPT-2
-    output_text = generate_response_distilgpt2(prompt, system_prompt)
+    # Generate canned response
+    output_text = generate_canned_response(prompt, system_prompt)
     
     # Calculate tokens
-    input_tokens = count_tokens(prompt, 'b')
-    output_tokens = count_tokens(output_text, 'b')
+    input_tokens = count_tokens(prompt)
+    output_tokens = count_tokens(output_text)
     
     return jsonify({
         'choices': [{
