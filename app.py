@@ -14,62 +14,15 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='static')
 
-# Load TinyLlama for Vendor A
-print("Loading TinyLlama model for Vendor A...")
-tinyllama_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-tinyllama_tokenizer = AutoTokenizer.from_pretrained(tinyllama_name)
-tinyllama_model = AutoModelForCausalLM.from_pretrained(tinyllama_name)
-tinyllama_tokenizer.pad_token = tinyllama_tokenizer.eos_token
-print("TinyLlama loaded!")
-
-# Load DistilGPT-2 for Vendor B
-print("Loading DistilGPT-2 model for Vendor B...")
+# Load DistilGPT-2 for both Vendor A and Vendor B
+print("Loading DistilGPT-2 model...")
 distilgpt2_name = "distilgpt2"
 distilgpt2_tokenizer = AutoTokenizer.from_pretrained(distilgpt2_name)
 distilgpt2_model = AutoModelForCausalLM.from_pretrained(distilgpt2_name)
 distilgpt2_tokenizer.pad_token = distilgpt2_tokenizer.eos_token
-print("DistilGPT-2 loaded!")
-print("All models loaded successfully!")
+print("DistilGPT-2 loaded successfully!")
 
 # Language model text generation
-def generate_response_tinyllama(prompt, system_prompt=None):
-    """Generate response using TinyLlama"""
-    try:
-        # Prepare input with TinyLlama chat format
-        if system_prompt:
-            full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{prompt}</s>\n<|assistant|>\n"
-        else:
-            full_prompt = f"<|user|>\n{prompt}</s>\n<|assistant|>\n"
-        
-        inputs = tinyllama_tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=512)
-        
-        # Generate response
-        with torch.no_grad():
-            outputs = tinyllama_model.generate(
-                inputs['input_ids'],
-                max_new_tokens=100,
-                temperature=0.7,
-                do_sample=True,
-                top_p=0.9,
-                pad_token_id=tinyllama_tokenizer.eos_token_id,
-                eos_token_id=tinyllama_tokenizer.eos_token_id
-            )
-        
-        # Decode and extract assistant response
-        full_response = tinyllama_tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract just the assistant's response
-        if "<|assistant|>" in full_response:
-            response = full_response.split("<|assistant|>")[1].strip()
-        else:
-            response = full_response[len(full_prompt):].strip()
-        
-        response = response.replace('</s>', '').strip()
-        return response if response else "I understand your message."
-    except Exception as e:
-        print(f"Error generating response with TinyLlama: {e}")
-        return "I understand your message."
-
 def generate_response_distilgpt2(prompt, system_prompt=None):
     """Generate response using DistilGPT-2"""
     try:
@@ -108,11 +61,8 @@ def generate_response_distilgpt2(prompt, system_prompt=None):
         return "I understand your message."
 
 def count_tokens(text, vendor='a'):
-    """Count tokens using the appropriate tokenizer"""
-    if vendor == 'a':
-        return len(tinyllama_tokenizer.encode(text))
-    else:
-        return len(distilgpt2_tokenizer.encode(text))
+    """Count tokens using the tokenizer"""
+    return len(distilgpt2_tokenizer.encode(text))
 
 # Vendor A endpoints
 @app.route('/vendor-a/messages', methods=['POST'])
@@ -133,8 +83,8 @@ def vendor_a_send_message():
     prompt = data.get('prompt', data.get('message', 'Hello'))
     system_prompt = data.get('system_prompt')
     
-    # Generate response using TinyLlama
-    output_text = generate_response_tinyllama(prompt, system_prompt)
+    # Generate response using DistilGPT-2
+    output_text = generate_response_distilgpt2(prompt, system_prompt)
     
     # Calculate tokens
     tokens_in = count_tokens(prompt, 'a')
@@ -197,6 +147,63 @@ def vendor_e_send_message():
         'response': echo_response
     }), 200
 
+def execute_function_call(function_name, arguments_str):
+    """Execute a function call and return the result"""
+    import json
+    
+    # Parse arguments
+    try:
+        arguments = json.loads(arguments_str)
+    except json.JSONDecodeError:
+        return json.dumps({"error": "Invalid JSON arguments"})
+    
+    # Real implementation for get_current_weather using wttr.in
+    if function_name == "get_current_weather":
+        location = arguments.get("location", "Unknown")
+        unit = arguments.get("unit", "fahrenheit")
+        
+        try:
+            # Call wttr.in weather API (free, no API key required)
+            weather_response = http_requests.get(
+                f"https://wttr.in/{location}?format=j1",
+                timeout=10
+            )
+            
+            if weather_response.status_code == 200:
+                weather_json = weather_response.json()
+                current = weather_json['current_condition'][0]
+                
+                # Convert temperature based on unit preference
+                if unit == "celsius":
+                    temp = current['temp_C']
+                    temp_unit = "°C"
+                else:
+                    temp = current['temp_F']
+                    temp_unit = "°F"
+                
+                weather_data = {
+                    "location": location,
+                    "temperature": f"{temp}{temp_unit}",
+                    "condition": current['weatherDesc'][0]['value'],
+                    "humidity": f"{current['humidity']}%",
+                    "wind_speed": f"{current['windspeedMiles']} mph",
+                    "feels_like": f"{current['FeelsLikeF']}°F" if unit == "fahrenheit" else f"{current['FeelsLikeC']}°C"
+                }
+                return json.dumps(weather_data)
+            else:
+                return json.dumps({
+                    "error": f"Failed to fetch weather data for {location}",
+                    "status_code": weather_response.status_code
+                })
+        except Exception as e:
+            return json.dumps({
+                "error": f"Weather API error: {str(e)}",
+                "location": location
+            })
+    
+    # Default response for unknown functions
+    return json.dumps({"error": f"Function {function_name} not implemented"})
+
 # Vendor O endpoints (OpenAI passthrough)
 @app.route('/vendor-o/messages', methods=['POST'])
 def vendor_o_send_message():
@@ -217,12 +224,14 @@ def vendor_o_send_message():
     
     try:
         # Build OpenAI request payload
+        messages = [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': prompt}
+        ]
+        
         payload = {
             'model': model,
-            'messages': [
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': prompt}
-            ]
+            'messages': messages
         }
         
         # Add tools if provided
@@ -233,7 +242,7 @@ def vendor_o_send_message():
         if tool_choice:
             payload['tool_choice'] = tool_choice
         
-        # Call OpenAI API directly using requests
+        # First API call to OpenAI
         response = http_requests.post(
             'https://api.openai.com/v1/chat/completions',
             headers={
@@ -244,11 +253,56 @@ def vendor_o_send_message():
             timeout=30
         )
         
-        # Return OpenAI response
-        if response.status_code == 200:
-            return jsonify(response.json()), 200
-        else:
+        if response.status_code != 200:
             return jsonify(response.json()), response.status_code
+        
+        response_data = response.json()
+        assistant_message = response_data['choices'][0]['message']
+        
+        # Check if the model wants to call a function
+        if assistant_message.get('tool_calls'):
+            # Add assistant's response to messages
+            messages.append(assistant_message)
+            
+            # Execute each tool call
+            for tool_call in assistant_message['tool_calls']:
+                function_name = tool_call['function']['name']
+                function_args = tool_call['function']['arguments']
+                
+                # Execute the function
+                function_response = execute_function_call(function_name, function_args)
+                
+                # Add function result to messages
+                messages.append({
+                    'tool_call_id': tool_call['id'],
+                    'role': 'tool',
+                    'name': function_name,
+                    'content': function_response
+                })
+            
+            # Second API call with function results
+            second_payload = {
+                'model': model,
+                'messages': messages
+            }
+            
+            second_response = http_requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                },
+                json=second_payload,
+                timeout=30
+            )
+            
+            if second_response.status_code == 200:
+                return jsonify(second_response.json()), 200
+            else:
+                return jsonify(second_response.json()), second_response.status_code
+        
+        # No tool calls, return first response
+        return jsonify(response_data), 200
             
     except Exception as e:
         return jsonify({

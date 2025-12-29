@@ -558,6 +558,16 @@
                             <td><span class="param-type">string</span></td>
                             <td>OpenAI model to use (default: "gpt-3.5-turbo")</td>
                         </tr>
+                        <tr>
+                            <td><span class="param-name">tools</span></td>
+                            <td><span class="param-type">array</span></td>
+                            <td>Optional list of tools/functions the model can call</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">tool_choice</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Optional tool choice: "auto", "none", or specific tool name</td>
+                        </tr>
                     </tbody>
                 </table>
                 
@@ -614,6 +624,17 @@
                     <input type="text" id="system-prompt-input" placeholder="You are a helpful assistant">
                 </div>
 
+                <div class="form-group" id="tools-group" style="display: none;">
+                    <label>Tools (Optional - JSON array)</label>
+                    <textarea id="tools-input" placeholder="Enter tools JSON array..."></textarea>
+                    <button type="button" onclick="loadWeatherTool()" style="margin-top: 8px; padding: 8px 12px; background: #f3f4f6; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 13px;">Load Weather Tool Example</button>
+                </div>
+
+                <div class="form-group" id="tool-choice-group" style="display: none;">
+                    <label>Tool Choice (Optional)</label>
+                    <input type="text" id="tool-choice-input" placeholder="auto">
+                </div>
+
                 <button class="try-button" id="execute-button" onclick="executeRequest()" disabled>
                     <span class="material-icons">send</span>
                     Send Request
@@ -651,6 +672,45 @@
             const select = document.getElementById('endpoint-select');
             currentEndpoint = select.value;
             document.getElementById('execute-button').disabled = !currentEndpoint;
+            
+            // Show tools fields only for vendor-o
+            const toolsGroup = document.getElementById('tools-group');
+            const toolChoiceGroup = document.getElementById('tool-choice-group');
+            if (currentEndpoint === 'vendor-o') {
+                toolsGroup.style.display = 'block';
+                toolChoiceGroup.style.display = 'block';
+            } else {
+                toolsGroup.style.display = 'none';
+                toolChoiceGroup.style.display = 'none';
+            }
+        }
+
+        function loadWeatherTool() {
+            const weatherTool = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "get_current_weather",
+                        "description": "Get the current weather in a given location",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "location": {
+                                    "type": "string",
+                                    "description": "The city and state, e.g. San Francisco, CA"
+                                },
+                                "unit": {
+                                    "type": "string",
+                                    "enum": ["celsius", "fahrenheit"],
+                                    "description": "The temperature unit to use"
+                                }
+                            },
+                            "required": ["location"]
+                        }
+                    }
+                }
+            ];
+            document.getElementById('tools-input').value = JSON.stringify(weatherTool, null, 2);
         }
 
         async function executeRequest() {
@@ -667,6 +727,25 @@
             const requestBody = { prompt };
             if (systemPrompt) {
                 requestBody.system_prompt = systemPrompt;
+            }
+
+            // Add tools and tool_choice for vendor-o
+            if (currentEndpoint === 'vendor-o') {
+                const toolsInput = document.getElementById('tools-input').value.trim();
+                const toolChoiceInput = document.getElementById('tool-choice-input').value.trim();
+                
+                if (toolsInput) {
+                    try {
+                        requestBody.tools = JSON.parse(toolsInput);
+                    } catch (e) {
+                        alert('Invalid JSON in tools field: ' + e.message);
+                        return;
+                    }
+                }
+                
+                if (toolChoiceInput) {
+                    requestBody.tool_choice = toolChoiceInput;
+                }
             }
 
             // Store request details
