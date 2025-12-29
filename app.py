@@ -204,6 +204,8 @@ def vendor_o_send_message():
     prompt = data.get('prompt', data.get('message', 'Hello'))
     system_prompt = data.get('system_prompt', 'You are a helpful assistant')
     model = data.get('model', 'gpt-3.5-turbo')
+    tools = data.get('tools')  # Optional tools parameter
+    tool_choice = data.get('tool_choice')  # Optional tool_choice parameter
     
     # Get API key
     api_key = os.getenv('OPENAI_API_KEY')
@@ -214,6 +216,23 @@ def vendor_o_send_message():
         }), 500
     
     try:
+        # Build OpenAI request payload
+        payload = {
+            'model': model,
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': prompt}
+            ]
+        }
+        
+        # Add tools if provided
+        if tools:
+            payload['tools'] = tools
+        
+        # Add tool_choice if provided
+        if tool_choice:
+            payload['tool_choice'] = tool_choice
+        
         # Call OpenAI API directly using requests
         response = http_requests.post(
             'https://api.openai.com/v1/chat/completions',
@@ -221,13 +240,7 @@ def vendor_o_send_message():
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json'
             },
-            json={
-                'model': model,
-                'messages': [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': prompt}
-                ]
-            },
+            json=payload,
             timeout=30
         )
         
