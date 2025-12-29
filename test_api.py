@@ -4,7 +4,7 @@ import requests
 import os
 
 # Base URL can be set via environment variable or defaults to localhost
-BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8080')
+BASE_URL = os.environ.get('BASE_URL', 'https://sf-mock-vendor.fly.dev')
 
 
 class TestVendorA:
@@ -22,7 +22,7 @@ class TestVendorA:
         """Test vendor-a message endpoint returns correct format"""
         response = requests.post(
             f"{BASE_URL}/vendor-a/conversations/test-123/messages",
-            json={'message': 'Hello, how are you?'},
+            json={'prompt': 'Hello, how are you?', 'system_prompt': 'You are a helpful assistant'},
             timeout=10
         )
         
@@ -50,7 +50,7 @@ class TestVendorA:
         for i in range(30):
             response = requests.post(
                 f"{BASE_URL}/vendor-a/conversations/test/messages",
-                json={'message': 'test'},
+                json={'prompt': 'test'},
                 timeout=10
             )
             results[str(response.status_code)] = results.get(str(response.status_code), 0) + 1
@@ -84,7 +84,7 @@ class TestVendorB:
         """Test vendor-b message endpoint returns correct format"""
         response = requests.post(
             f"{BASE_URL}/vendor-b/conversations/test-456/messages",
-            json={'message': 'What is AI?'},
+            json={'prompt': 'What is AI?', 'system_prompt': 'You are a helpful assistant'},
             timeout=10
         )
         
@@ -114,7 +114,7 @@ class TestVendorB:
         for i in range(30):
             response = requests.post(
                 f"{BASE_URL}/vendor-b/conversations/test/messages",
-                json={'message': 'test'},
+                json={'prompt': 'test'},
                 timeout=10
             )
             results[str(response.status_code)] = results.get(str(response.status_code), 0) + 1

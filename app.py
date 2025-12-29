@@ -17,12 +17,15 @@ tokenizer.pad_token = tokenizer.eos_token
 print("Model loaded successfully!")
 
 # Language model text generation
-def generate_mock_response(message):
+def generate_mock_response(prompt, system_prompt=None):
     """Generate response using DistilGPT-2"""
     try:
-        # Prepare input
-        prompt = f"User: {message}\nAssistant:"
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=100)
+        # Prepare input with optional system prompt
+        if system_prompt:
+            full_prompt = f"System: {system_prompt}\nUser: {prompt}\nAssistant:"
+        else:
+            full_prompt = f"User: {prompt}\nAssistant:"
+        inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=100)
         
         # Generate response
         with torch.no_grad():
@@ -44,7 +47,7 @@ def generate_mock_response(message):
             # Take first sentence or up to 100 chars
             response = response.split('.')[0] + '.' if '.' in response else response[:100]
         else:
-            response = full_response[len(prompt):].strip()[:100]
+            response = full_response[len(full_prompt):].strip()[:100]
         
         return response if response else "I understand your message."
     except Exception as e:
@@ -78,13 +81,14 @@ def vendor_a_send_message(conversation_id):
         time.sleep(random.uniform(2, 5))
     
     data = request.get_json()
-    input_message = data.get('message', 'Hello')
+    prompt = data.get('prompt', data.get('message', 'Hello'))
+    system_prompt = data.get('system_prompt')
     
     # Generate response
-    output_text = generate_mock_response(input_message)
+    output_text = generate_mock_response(prompt, system_prompt)
     
     # Calculate tokens
-    tokens_in = count_tokens(input_message)
+    tokens_in = count_tokens(prompt)
     tokens_out = count_tokens(output_text)
     
     # Calculate latency
@@ -116,13 +120,14 @@ def vendor_b_send_message(conversation_id):
         }), 429
     
     data = request.get_json()
-    input_message = data.get('message', 'Hello')
+    prompt = data.get('prompt', data.get('message', 'Hello'))
+    system_prompt = data.get('system_prompt')
     
     # Generate response
-    output_text = generate_mock_response(input_message)
+    output_text = generate_mock_response(prompt, system_prompt)
     
     # Calculate tokens
-    input_tokens = count_tokens(input_message)
+    input_tokens = count_tokens(prompt)
     output_tokens = count_tokens(output_text)
     
     return jsonify({
